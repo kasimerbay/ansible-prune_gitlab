@@ -1,0 +1,52 @@
+- name: Stop Gitlab Services
+  ansible.builtin.shell:
+    cmd: "gitlab-ctl stop"
+
+- name: Stop Gitlab Service
+  ansible.builtin.service:
+    name: gitlab-runsvdir
+    state: stopped
+    enabled: no
+
+- name: Remove Gitlab Installation
+  ansible.builtin.yum:
+    name: gitlab-ee
+    state: absent
+
+- name: Remove Gitlab Service
+  ansible.builtin.file:
+    path: /usr/lib/systemd/system/gitlab-runsvdir.service
+    state: absent
+  register: gitlab_service_removed
+
+- name: Clean yum cache
+  ansible.builtin.command: yum clean all
+  when: gitlab_service_removed.changed
+
+- name: Reload Systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  when: gitlab_service_removed.changed
+  register: systemd_reloaded
+
+- name: Remove Gitlab Files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /run/gitlab
+    - /etc/yum.repos.d/gitlab_gitlab-ee.repo
+    - /etc/gitlab
+    - /var/opt/gitlab
+    - /var/log/gitlab
+    - /opt/gitlab
+    - /usr/bin/gitlab-ctl
+    - /usr/bin/gitlab-rake
+    - /usr/bin/gitlab-rails
+    - /usr/bin/gitlab-psql
+    - /usr/bin/gitlab-pg-ctl
+    - /usr/bin/gitlab-geo-psql
+    - /usr/bin/gitlab-backup
+    - /usr/bin/gitlab-redis-cli
+    - /usr/bin/gitlab-backup-cli
+    - /var/cache/dnf
